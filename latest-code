@@ -1,0 +1,204 @@
+$var[dtpvn;devtoolspack_cache] $c[!# Don't leave empty, this variable refers to the name of the app variable 
+                                where the data will be stored! (You can change this for whatever variable you want!)]
+
+$if[$authorID!=$botOwnerID]
+  $stop
+$endif
+
+$c[!# Get user preferences and important data]
+$if[$varExists[$var[dtpvn]]]
+    
+  $var[devtoolspack_cache;$getVar[$var[dtpvn]]]
+  $var[bdfd_auth;$getVar[$var[dtpvn];$botOwnerID]]
+    
+  $c[!# If auth token is in the variable or don't exist]
+  $if[$or[$var[bdfd_auth]==;$var[bdfd_auth]==$getVar[$var[dtpvn]]]]
+    $setVar[$var[dtpvn];]
+    $setVar[$var[dtpvn];$var[bdfd_auth];$botOwnerID]
+    $setVar[$var[dtpvn];¬ffffff¬true¬]
+  $endif
+
+  $c[!# Parse preferences]
+  $textSplit[$var[devtoolspack_cache];¬]
+
+  $var[prefix;$splitText[<]]
+  $var[color;$splitText[2]]
+  $var[autouptdate;$splitText[3]]
+  $var[github_auto-update-url;$splitText[4]]
+
+  $else
+        
+    $var[github_auto-update;false]
+    $var[color;ffffff]
+    $var[github_auto-update-url;]
+
+$endif
+
+$c[!# Author content manipulator (A.K.A automatic content lowercase). V2]
+$var[args;$replaceText[$message;$message[1];;1]]
+$var[0;$toLowercase[$message]]
+$var[¶§∆.count;1]
+$var[¶§∆;$replaceText[$repeatMessage[10;$repeatMessage[10;$repeatMessage[10;0000]]];0;;$sub[4000;$argCount[$message]]]]
+$var[¶§∆;$replaceText[$var[¶§∆];0;$c[! CODE !] %{DOL}%var[%{DOL}%var[¶§∆.count\]\;%{DOL}%toLowercase[%{DOL}%message[%{DOL}%var[¶§∆.count\]\]\]\] %{DOL}%var[¶§∆.count\;%{DOL}%sum[1\;%{DOL}%var[¶§∆.count\]\]\] $c[! CODE !];-1]]
+$eval[$var[¶§∆]]
+
+$var[version;1]
+
+$c[? Github Auto-Update]
+$if[$day!=$getVar[day]]
+  $var[command.id;]
+  $setVar[day;$day]
+  $httpGet[https://raw.githubusercontent.com/tsukum0/Akemi/refs/heads/main/version.bds]
+  $var[release.version;$httpResult]
+  $if[$var[release.version]>$var[version]]
+    $suppressErrors
+    $httpGet[https://raw.githubusercontent.com/tsukum0/Akemi/refs/heads/main/code.bds]
+    $var[release.code;$httpResult]
+    $httpAddHeader[content-type;application/x-www-form-urlencoded]
+    $httpAddHeader[Accept;text/html,application/xhtml+xml,application/xml\;q=0.9,*/*\;q=0.8]
+    $httpAddHeader[Cookie;default-sessionStore="$var[bdfd_auth]"]
+    $httpPost[https://botdesignerdiscord.com/app/bot/2458679/command/$var[command.id];name=$url[encode;$var[trigger]]&command=$url[encode;$var[trigger]]&replyMessage=$url[encode;$replaceText[$var[release.code];%GITHUBUPDATE%;$var[command.id];1]]&language=3]
+    $var[update.status;$httpStatus]
+    $var[update.result;$httpResult]
+    $httpRemoveHeader[Cookie]
+ $endif
+$endif
+
+
+$c[--------- COMMANDS ---------]
+
+
+$c[- #BDFD Connect command]
+$if[$checkContains[ $var[1] ; bdfd ]]
+  $var[bdfd-only-owner-error-message;:x:| <@$authorID> you don't have permission to use this command!] $c[!# Can be empty!]
+  
+  $onlyForIDs[$botOwnerID;$var[bdfd-only-owner-error-message]]
+  
+  $c[!# Require local variable: bdfd_auth
+  The owner of the bot needs to add the bdfd auth cookie in the devtoolspack_cache! (As local user variable)
+  ----- Require local variable: 1, 2, 3.
+  You can use the Automatic lowercase in the wiki section of Bot Designer For Discord's discord server! (the one that's owned by me.)]
+
+  $var[bdfd_url;https://botdesignerdiscord.com/app/]
+  $httpAddHeader[content-type;application/x-www-form-urlencoded]
+  $httpAddHeader[Accept;text/html,application/xhtml+xml,application/xml\;q=0.9,*/*\;q=0.8]
+  $httpAddHeader[Cookie;default-sessionStore="$var[bdfd_auth]"]
+  
+  $c[# Instructions]
+  $if[$var[2]==]
+
+    $title[How use?]
+    $author[Bot Designer For Discord]
+    $authorIcon[$authorAvatar]
+    $thumbnail[https://botdesignerdiscord.com/logo512.png]
+    $description[You need to follow this form: `$var[prefix]bdfd <command-here>`]
+    $addField[Commands;
+`$var[prefix]bdfd home` (List yours bots and their BDFD's bot IDs.)
+`$var[prefix]bdfd bot <bot-id>` (List yours bot's commands and their BDFD's commands IDs.)
+;yes]
+    $color[#673AB7]
+    $footer[By tsu]
+    $footerIcon[$userAvatar[$botID]]
+
+  $endif
+  
+  $c[# Check bot commands.]
+  $if[$checkContains[ $var[2] ; bot ]]
+    $onlyIf[$message[3]!=;:x: | Invalid use! `$var[prefix]$var[1] $var[2] <bdfd-bot-id>`]
+    
+    $var[bdfd_bot_id;$var[3]]
+
+    $httpGet[$var[bdfd_url]/bot/$var[3]]
+    $textSplit[$httpResult;<title>]
+    $textSplit[$splitText[2];</title]
+    $var[bdfd_dashboard_title;$splitText[1]]
+    $textSplit[$httpResult;<span class="uk-countdown-minutes"></span> minutes]
+    $textSplit[$splitText[2];<a href="/app/bot/$var[bdfd_bot_id]/new_command">]
+    $var[bdfd_request_result;$splitText[1]]
+    $textSplit[$var[bdfd_request_result];<div class="commandCard">]
+    $var[bdfd_command_count;$sub[$getTextSplitLength;1]]
+
+    $if[$var[bdfd_command_count]>10] $c[! #Due to limitations!]
+      $var[bdfd_command_count;10]
+    $endif
+
+    $c[# bdfd.p = position in the html]
+    $var[bdfd.p;1]
+    $var[bdfd_get_bot_commands;$repeatMessage[$var[bdfd_command_count];Name:%{DOL}%textSplit[%{DOL}%var[bdfd_request_result\]\;<span class="commandTitle">\]%{DOL}%textSplit[%{DOL}%splitText[%{DOL}%sum[0%{DOL}%var[bdfd.p\]\;1\]\]\;</span>\] `%{DOL}%splitText[1\]`
+Trigger:%{DOL}%textSplit[%{DOL}%var[bdfd_request_result\]\;<span class="commandDesc">\]%{DOL}%textSplit[%{DOL}%splitText[%{DOL}%sum[0%{DOL}%var[bdfd.p\]\;1\]\]\;</span>\] `%{DOL}%splitText[1\]`
+ID:%{DOL}%textSplit[%{DOL}%var[bdfd_request_result\]\;<a href="/app/bot/%{DOL}%var[bdfd_bot_id\]/command/\]%{DOL}%textSplit[%{DOL}%splitText[%{DOL}%sum[0%{DOL}%var[bdfd.p\]\;1\]\]\;"\] `%{DOL}%splitText[1\]`
+
+%{DOL}%var[bdfd.p\;%{DOL}%sum[0%{DOL}%var[bdfd.p\]\;1\]\]]]
+
+    $var[bdfd_get_bot_commands;$replaceText[$replaceText[$replaceText[$eval[$var[bdfd_get_bot_commands]];``;` `;-1];&lt\;;<;-1];&gt\;;>;-1]]
+    
+    $title[$var[bdfd_dashboard_title]]
+    $embeddedURL[$var[bdfd_url]bot/$var[bdfd_bot_id]]
+    $author[Bot Designer For Discord]
+    $authorIcon[$authorAvatar]
+    $thumbnail[https://botdesignerdiscord.com/logo512.png]
+    $description[$var[bdfd_get_bot_commands]]
+    $addField[Commands count;`$var[bdfd_command_count] commands`]
+    $color[#673AB7]
+    $footer[By tsu]
+    $footerIcon[$userAvatar[$botID]]
+
+  $endif
+
+  $c[# See bdfd menu]
+  $if[$checkContains[ $var[2] ; menu ; home ]]
+  
+    $httpGet[$var[bdfd_url]home/]
+    $textSplit[$httpResult;<h2>Your bots:</h2>]
+    $var[bdfd_request_result;$splitText[2]]
+    $textSplit[$var[bdfd_request_result];<h2>Account management:</h2>]
+    $var[bdfd_request_result;$splitText[1]]
+    $textSplit[$var[bdfd_request_result];<h3 class="uk-card-title">]
+    $var[bdfd_bot_count;$sub[$getTextSplitLength;1]]
+
+    $c[# bdfd.p = position in the html]
+    $var[bdfd.p;1]
+    $var[bdfd_get_bot_name;$repeatMessage[$var[bdfd_bot_count];%{DOL}%textSplit[%{DOL}%splitText[%{DOL}%sum[%{DOL}%var[bdfd.p\]\;1\]\]\;</h3>\]**%{DOL}%splitText[1\]**
+%{DOL}%textSplit[%{DOL}%var[bdfd_request_result\]\;<a class="botCard" href="bot/\]%{DOL}%textSplit[%{DOL}%splitText[%{DOL}%sum[1\;%{DOL}%var[bdfd.p\]\]\]\;">\]ID: ||`%{DOL}%sum[0%{DOL}%splitText[1\]\;0\]`||
+%{DOL}%textSplit[%{DOL}%var[bdfd_request_result\]\;<a class="botCard" href="bot/\]%{DOL}%textSplit[%{DOL}%splitText[%{DOL}%sum[%{DOL}%var[bdfd.p\]\;1\]\]\;<p>\]%{DOL}%textSplit[%{DOL}%splitText[2\]\;<br/>\]Host: `%{DOL}%if[%{DOL}%checkContains[%{DOL}%splitText[1\]\;Hosting already ended\]\]Hosting already ended%{DOL}%elseHosting ends in %{DOL}%hostingExpireTime%{DOL}%endif`
+%{DOL}%var[bdfd.p\;%{DOL}%sum[%{DOL}%var[bdfd.p\]\;1\]\]%{DOL}%textSplit[%{DOL}%var[bdfd_request_result\]\;<h3 class="uk-card-title">\]]]$c[*/]
+
+    $var[bdfd_get_bot_name;$eval[$var[bdfd_get_bot_name]]]
+
+    $title[Welcome back $username!]
+    $embeddedURL[$var[bdfd_url]home/]
+    $author[Bot Designer For Discord]
+    $authorIcon[$authorAvatar]
+    $thumbnail[https://botdesignerdiscord.com/logo512.png]
+    $description[$var[bdfd_get_bot_name]]
+    $addField[Account managment:;[Logout\](https://botdesignerdiscord.com/logout)]
+    $addField[Bot count;`$var[bdfd_bot_count] bots`]
+    $addField[Time;`$executionTimems`]
+    $color[#673AB7]
+    $footer[By tsu]
+    $footerIcon[$userAvatar[$botID]]
+
+ $endif
+$endif
+
+$c[# ...]
+
+$c[!# Eval comand]
+$if[$checkContains[ $var[1] ; eval ; bdfd ; bdscript2 ; bdscript ]]
+  $try
+    $eval[$var[args]]
+  $catch
+    $var[output.log;$var[output.log]
+(   ) Eval: $error[message]
+  Line: $error[row]]
+  $endtry
+$endif
+
+
+$c[!# Logs]
+$if[$checkContains[ $var[0] ; --output ]]
+```ansi
+-- Logs --
+$var[output.log]
+```
+$endif
